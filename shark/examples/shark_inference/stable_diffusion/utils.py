@@ -70,6 +70,8 @@ def set_iree_runtime_flags():
     vulkan_runtime_flags = [
         f"--vulkan_large_heap_block_size={args.vulkan_large_heap_block_size}",
     ]
+    if arg.enable_rgp:
+        vulkan_runtime_flags += [f"--enable_rgp={args.enable_rgp}"]
     if "vulkan" in args.device:
         set_iree_vulkan_runtime_flags(flags=vulkan_runtime_flags)
 
