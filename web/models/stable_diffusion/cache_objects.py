@@ -7,7 +7,7 @@ from diffusers import (
     EulerDiscreteScheduler,
 )
 from models.stable_diffusion.opt_params import get_unet, get_vae, get_clip
-from models.stable_diffusion.utils import set_iree_runtime_flags
+from models.stable_diffusion.utils import set_iree_runtime_flags, generate_initial_latents
 from models.stable_diffusion.stable_args import args
 from models.stable_diffusion.schedulers import (
     SharkEulerDiscreteScheduler,
@@ -68,3 +68,14 @@ if args.version == "v2.1base":
     cache_obj["tokenizer"] = CLIPTokenizer.from_pretrained(
         "stabilityai/stable-diffusion-2-1-base", subfolder="tokenizer"
     )
+
+# cache initial latents
+height = 512
+width = 512
+if args.version == "v2.1":
+    height = 768
+    width = 768
+cache_obj["init"] = {
+    "seed": args.seed,
+    "latents": generate_initial_latents(height, width),
+}

@@ -86,3 +86,16 @@ def set_iree_runtime_flags():
         set_iree_vulkan_runtime_flags(flags=vulkan_runtime_flags)
 
     return
+
+def generate_initial_latents(height, width):
+    dtype = torch.float32 if args.precision == "fp32" else torch.half
+    generator = torch.manual_seed(
+        args.seed
+    )  # Seed generator to create the inital latent noise
+
+    # create a random initial latent.
+    return torch.randn(
+        (1, 4, height // 8, width // 8),
+        generator=generator,
+        dtype=torch.float32,
+    ).to(dtype)

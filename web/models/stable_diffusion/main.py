@@ -7,6 +7,7 @@ from models.stable_diffusion.cache_objects import (
     schedulers,
 )
 from models.stable_diffusion.stable_args import args
+from models.stable_diffusion.utils import generate_initial_latents
 from random import randint
 import numpy as np
 import time
@@ -38,23 +39,22 @@ def stable_diff_inf(
     guidance_scale = torch.tensor(guidance_scale).to(torch.float32)
     set_ui_params(prompt, negative_prompt, steps, guidance_scale, seed)
     dtype = torch.float32 if args.precision == "fp32" else torch.half
-    generator = torch.manual_seed(
-        args.seed
-    )  # Seed generator to create the inital latent noise
 
-    # set height and width.
-    height = 512  # default height of Stable Diffusion
-    width = 512  # default width of Stable Diffusion
+    # get model height and width.
+    height = 512
+    width = 512
     if args.version == "v2.1":
         height = 768
         width = 768
 
-    # create a random initial latent.
-    latents = torch.randn(
-        (1, 4, height // 8, width // 8),
-        generator=generator,
-        dtype=torch.float32,
-    ).to(dtype)
+    if not cache_obj["init"]["seed"] == args.seed:
+        latents = generate_initial_latents(height, width)
+        cache_obj["init"] = {
+            "seed": args.seed,
+            "latents": latents,
+        }
+    else:
+        latents = cache_obj["init"]["latents"]
 
     # Initialize vae and unet models.
     vae, unet, clip, tokenizer = (
