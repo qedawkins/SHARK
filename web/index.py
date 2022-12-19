@@ -1,10 +1,5 @@
-import os
-
-os.environ["AMD_ENABLE_LLPC"] = "1"
-
-# from models.resnet50 import resnet_inf
-# from models.albert_maskfill import albert_maskfill_inf
 from models.stable_diffusion.main import stable_diff_inf
+from models.stable_diffusion.stable_args import args
 
 # from models.diffusion.v_diffusion import vdiff_inf
 import gradio as gr
@@ -14,8 +9,6 @@ import os
 import sys
 from random import randint
 import numpy as np
-
-os.environ["AMD_ENABLE_LLPC"] = "1"
 
 
 def resource_path(relative_path):
@@ -168,6 +161,7 @@ with gr.Blocks(title="Stable Diffusion", css=demo_css) as shark_web:
                 scheduler_key,
             ],
             outputs=[generated_img, std_output],
+            show_progress=args.progress_bar,
         )
         stable_diffusion.click(
             stable_diff_inf,
@@ -180,6 +174,7 @@ with gr.Blocks(title="Stable Diffusion", css=demo_css) as shark_web:
                 scheduler_key,
             ],
             outputs=[generated_img, std_output],
+            show_progress=args.progress_bar,
         )
 
 shark_web.queue()
