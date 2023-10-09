@@ -421,10 +421,10 @@ class VicunaBase(SharkLLMBase):
         else:
             token = params["token"]
             past_key_values = params["past_key_values"]
-            input_ids = [token]
-            input_id_len = len(input_ids)
-            input_ids = torch.tensor(input_ids)
-            input_ids = input_ids.reshape([1, input_id_len])
+            #input_ids = [token]
+            #input_id_len = len(input_ids)
+            #input_ids = torch.tensor(input_ids)
+            #input_ids = input_ids.reshape([1, input_id_len])
             if sharded:
                 output = self.shark_model.forward(
                     input_ids,
@@ -432,7 +432,7 @@ class VicunaBase(SharkLLMBase):
                     is_first=is_first,
                 )
             else:
-                token = token.to(torch.int64).reshape([1, 1])
+                #token = token.to(torch.int64).reshape([1, 1])
                 second_input = (token,) + tuple(past_key_values)
                 output = self.shark_model(
                     "second_vicuna_forward", second_input, send_to_host=False
@@ -444,17 +444,19 @@ class VicunaBase(SharkLLMBase):
             _token = int(torch.argmax(_logits[:, -1, :], dim=1)[0])
         else:
             _past_key_values = output[1:]
-            _token = torch.tensor(output[0].to_host())
+            _token = output[0]
 
-        _detok = self.tokenizer.decode(_token, skip_special_tokens=False)
+        #_detok = self.tokenizer.decode(_token, skip_special_tokens=False)
         ret_dict = {
             "token": _token,
-            "detok": _detok,
+            "detok": None,
             "past_key_values": _past_key_values,
         }
 
-        if cli:
-            print(f" token : {_token} | detok : {_detok}")
+        #if cli:
+        #    print(f" token : {_token} | detok : {_detok}")
+
+        self.shark_model.shark_runner.iree_config.device.flush_profiling()
 
         return ret_dict
 
@@ -1200,6 +1202,7 @@ class ShardedVicuna(VicunaBase):
         _past_key_values = None
         _token = None
         detoks_generated = []
+        self.shark_model.shark_runner.iree_config.device.begin_profiling()
         for iteration in range(self.max_num_tokens):
             params = {
                 "prompt": prompt,
@@ -1214,16 +1217,19 @@ class ShardedVicuna(VicunaBase):
             _past_key_values = generated_token_op["past_key_values"]
             _detok = generated_token_op["detok"]
             history.append(_token)
+            print("yielding sharded?")
             yield self.tokenizer.decode(history)
 
             if _token == 2:
                 break
             detoks_generated.append(_detok)
             tokens_generated.append(_token)
+        self.shark_model.shark_runner.iree_config.device.end_profiling()
 
         for i in range(len(tokens_generated)):
             if type(tokens_generated[i]) != int:
-                tokens_generated[i] = int(tokens_generated[i][0])
+                tokens_generated[i] = int(tokens_generated[i].to_host()[0])
+            detoks_generated[i] = self.tokenizer.decode(tokens_generated[i], skip_special_tokens=False)
         result_output = self.tokenizer.decode(tokens_generated)
         yield result_output
 
@@ -1687,7 +1693,7 @@ class UnshardedVicuna(VicunaBase):
             combined_module = save_mlir(
                 combined_module,
                 model_name="combined_llama",
-                mlir_dialect="tm_tensor"
+                mlir_dialect="tm_tensor",
                 dir=self.vicuna_mlir_path,
             )
             del first_module, second_module
@@ -1719,7 +1725,7 @@ class UnshardedVicuna(VicunaBase):
     def decode_tokens(self, res_tokens):
         for i in range(len(res_tokens)):
             if type(res_tokens[i]) != int:
-                res_tokens[i] = int(res_tokens[i][0])
+                res_tokens[i] = int(res_tokens[i])
 
         res_str = self.tokenizer.decode(
             res_tokens, skip_special_tokens=False
@@ -1742,13 +1748,13 @@ class UnshardedVicuna(VicunaBase):
         token = generated_token_op["token"]
         pkv = generated_token_op["past_key_values"]
         detok = generated_token_op["detok"]
-        yield detok, None, prefill_time
+        yield token, None, prefill_time
 
         res_tokens.append(token)
-        if cli:
-            print(f"Assistant: {detok}", end=" ", flush=True)
+        #if cli:
+        #    print(f"Assistant: {detok}", end=" ", flush=True)
 
-        for idx in range(self.max_num_tokens):
+        for idx in range(128):
             params = {
                 "token": token,
                 "is_first": False,
@@ -1766,18 +1772,19 @@ class UnshardedVicuna(VicunaBase):
             pkv = generated_token_op["past_key_values"]
             detok = generated_token_op["detok"]
 
-            if token == 2 and idx >= self.min_num_tokens:
-                break
+            #if token == 2 and idx >= self.min_num_tokens:
+            #    break
             res_tokens.append(token)
-            if detok == "<0x0A>":
-                if cli:
-                    print("\n", end="", flush=True)
-            else:
-                if cli:
-                    print(f"{detok}", end=" ", flush=True)
-            yield detok, None, decode_time_ms
+            #if detok == "<0x0A>":
+            #    if cli:
+            #        print("\n", end="", flush=True)
+            #else:
+            #    if cli:
+            #        print(f"{detok}", end=" ", flush=True)
+            #yield token, None, decode_time_ms
 
-        res_str = self.decode_tokens(res_tokens)
+        copied_tokens = [tok.to_host()[0][0] for tok in res_tokens]
+        res_str = self.decode_tokens(copied_tokens)
         yield res_str, "formatted", None
 
     def autocomplete(self, prompt):

@@ -322,7 +322,7 @@ def compile_module_to_flatbuffer(
     else:
         assert os.path.isfile(module)
         flatbuffer_blob = ireec.compile_file(
-            module,
+            str(module),
             input_type=input_type,
             target_backends=[iree_target_map(device)],
             extra_args=args,
@@ -339,8 +339,9 @@ def get_iree_module(flatbuffer_blob, device, device_idx=None):
         haldriver = ireert.get_driver(device)
         haldevice = haldriver.create_device(
             haldriver.query_available_devices()[device_idx]["device_id"],
-            allocators=shark_args.device_allocator,
+            None,
         )
+            #allocators=shark_args.device_allocator,
         config = ireert.Config(device=haldevice)
     else:
         config = get_iree_runtime_config(device)
@@ -369,8 +370,9 @@ def load_vmfb_using_mmap(
 
             haldevice = haldriver.create_device(
                 haldriver.query_available_devices()[device_idx]["device_id"],
-                allocators=shark_args.device_allocator,
+                None,
             )
+                #allocators=shark_args.device_allocator,
             dl.log(f"ireert.create_device()")
             config = ireert.Config(device=haldevice)
             dl.log(f"ireert.Config()")
@@ -592,7 +594,8 @@ def get_iree_runtime_config(device):
     haldevice = haldriver.create_device_by_uri(
         device,
         # metal devices have a failure with caching allocators atm. blcking this util it gets fixed upstream.
-        allocators=shark_args.device_allocator if device != "metal" else None,
+        None,
     )
+        #allocators=shark_args.device_allocator if device != "metal" else None,
     config = ireert.Config(device=haldevice)
     return config

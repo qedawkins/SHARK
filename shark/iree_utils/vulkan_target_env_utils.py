@@ -38,8 +38,10 @@ def get_vulkan_target_env(vulkan_target_triple):
 
 
 def get_vulkan_target_env_flag(vulkan_target_triple):
-    target_env = get_vulkan_target_env(vulkan_target_triple)
-    target_env_flag = f"--iree-vulkan-target-env={target_env}"
+    #target_env = get_vulkan_target_env(vulkan_target_triple)
+    #target_env_flag = f"--iree-vulkan-target-env={target_env}"
+    #target_env_flag = f"--iree-vulkan-target-triple={vulkan_target_triple}"
+    target_env_flag = vulkan_target_triple
     return target_env_flag
 
 

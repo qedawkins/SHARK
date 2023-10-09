@@ -124,7 +124,7 @@ def get_vulkan_target_triple(device_name):
     elif all(x in device_name for x in ("AMD", "PRO", "W7900")):
         triple = f"rdna3-w7900-{system_os}"
     elif any(x in device_name for x in ("AMD", "Radeon")):
-        triple = f"rdna2-unknown-{system_os}"
+        triple = f"rdna3-unknown-{system_os}"
     # Intel Targets
     elif any(x in device_name for x in ("A770", "A750")):
         triple = f"arc-770-{system_os}"
